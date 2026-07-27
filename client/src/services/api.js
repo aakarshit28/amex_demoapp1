@@ -5,10 +5,16 @@ const API = axios.create({
   timeout: 10000,
 });
 
-// Attach JWT on every request
+// Attach JWT & bypass network calls in pure client database mode
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('atlas_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // If no external API server URL is provided, bypass network layer completely
+  if (!import.meta.env.VITE_API_URL) {
+    config.adapter = async () => getFallbackResponse(config);
+  }
+
   return config;
 });
 

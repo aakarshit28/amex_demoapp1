@@ -18,18 +18,7 @@ export default function LoginPage() {
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      console.warn('[ATLAS Auth Warning] Network/405 error encountered, proceeding with executive demo session:', err);
-      const mockUser = {
-        id: Date.now(),
-        name: email ? email.split('@')[0].toUpperCase() : 'EXECUTIVE USER',
-        email: email || 'executive@amex.com',
-        cardType: 'Platinum Business',
-        tier: 'Platinum Member'
-      };
-      localStorage.setItem('atlas_token', 'atlas_jwt_' + Date.now());
-      localStorage.setItem('atlas_user', JSON.stringify(mockUser));
-      navigate('/dashboard');
-      window.location.href = '/dashboard';
+      setError('Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }

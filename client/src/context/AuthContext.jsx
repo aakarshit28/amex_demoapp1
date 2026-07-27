@@ -1,60 +1,88 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import API from '../services/api';
 
 const AuthContext = createContext(null);
 
+// Client-side Database Helper
+function getStoredUsers() {
+  try {
+    const raw = localStorage.getItem('atlas_db_users');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredUsers(users) {
+  try {
+    localStorage.setItem('atlas_db_users', JSON.stringify(users));
+  } catch (e) {
+    console.error('Failed to save users database:', e);
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('atlas_user')); }
-    catch { return null; }
+    try {
+      return JSON.parse(localStorage.getItem('atlas_user'));
+    } catch {
+      return null;
+    }
   });
 
   const login = useCallback(async (email, password) => {
-    try {
-      const res = await API.post('/auth/login', { email, password });
-      localStorage.setItem('atlas_token', res.data.token);
-      localStorage.setItem('atlas_user', JSON.stringify(res.data.user));
-      setUser(res.data.user);
-      return res.data.user;
-    } catch (err) {
-      // Fallback for static host deployments (e.g. Vercel without active backend)
-      const mockUser = {
+    const users = getStoredUsers();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    
+    let existing = users.find(u => u.email.toLowerCase() === cleanEmail);
+
+    if (!existing) {
+      // Create user record dynamically on login
+      existing = {
         id: Date.now(),
-        name: email ? email.split('@')[0].toUpperCase() : 'EXECUTIVE USER',
+        name: email ? email.split('@')[0].toUpperCase() : 'AMIT SHARMA',
         email: email || 'executive@amex.com',
         cardType: 'Platinum Business',
-        tier: 'Platinum Member'
+        tier: 'Platinum Member',
+        created_at: new Date().toISOString()
       };
-      const mockToken = 'atlas_jwt_' + Date.now();
-      localStorage.setItem('atlas_token', mockToken);
-      localStorage.setItem('atlas_user', JSON.stringify(mockUser));
-      setUser(mockUser);
-      return mockUser;
+      users.push(existing);
+      saveStoredUsers(users);
     }
+
+    const token = 'atlas_jwt_' + Date.now();
+    localStorage.setItem('atlas_token', token);
+    localStorage.setItem('atlas_user', JSON.stringify(existing));
+    setUser(existing);
+    return existing;
   }, []);
 
   const signup = useCallback(async (name, email, password) => {
-    try {
-      const res = await API.post('/auth/signup', { name, email, password });
-      localStorage.setItem('atlas_token', res.data.token);
-      localStorage.setItem('atlas_user', JSON.stringify(res.data.user));
-      setUser(res.data.user);
-      return res.data.user;
-    } catch (err) {
-      // Fallback for static host deployments (e.g. Vercel without active backend)
-      const mockUser = {
+    const users = getStoredUsers();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanName = (name || (email ? email.split('@')[0] : 'EXECUTIVE USER')).trim();
+
+    let existing = users.find(u => u.email.toLowerCase() === cleanEmail);
+    if (!existing) {
+      existing = {
         id: Date.now(),
-        name: name || (email ? email.split('@')[0].toUpperCase() : 'EXECUTIVE USER'),
+        name: cleanName,
         email: email || 'executive@amex.com',
         cardType: 'Platinum Business',
-        tier: 'Platinum Member'
+        tier: 'Platinum Member',
+        created_at: new Date().toISOString()
       };
-      const mockToken = 'atlas_jwt_' + Date.now();
-      localStorage.setItem('atlas_token', mockToken);
-      localStorage.setItem('atlas_user', JSON.stringify(mockUser));
-      setUser(mockUser);
-      return mockUser;
+      users.push(existing);
+      saveStoredUsers(users);
+    } else {
+      existing.name = cleanName;
+      saveStoredUsers(users);
     }
+
+    const token = 'atlas_jwt_' + Date.now();
+    localStorage.setItem('atlas_token', token);
+    localStorage.setItem('atlas_user', JSON.stringify(existing));
+    setUser(existing);
+    return existing;
   }, []);
 
   const logout = useCallback(() => {
@@ -71,3 +99,4 @@ export function AuthProvider({ children }) {
 }
 
 export const useAuth = () => useContext(AuthContext);
+
